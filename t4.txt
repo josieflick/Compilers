@@ -1,0 +1,5 @@
+/* gg _t4 */
+int main(int b)
+{
+   x();
+}

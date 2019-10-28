@@ -1,0 +1,10 @@
+/* gg */
+
+void main(void) {
+   int x;
+   int y;
+   if (x > y)
+   { 
+      x = 5;
+   }
+}

@@ -1,0 +1,34 @@
+/* bb*/
+
+int q;
+
+
+void monkey(void)
+{
+   int q;   
+   void a[4];
+   int b;
+   void c;
+
+
+   b=b+2;
+
+/*   ER:*/
+   if (c==while)
+   {
+      a[10]=3;
+   }
+   
+   
+}
+
+
+/*   ER:*/
+int q;
+
+int car(int j)
+{
+   int q[3];
+   
+   q=j+4;
+}

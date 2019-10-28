@@ -1,0 +1,10 @@
+/* gg _t15 */
+void main(int x)
+{
+   int x;
+   x = 0;
+   while(x == 0)
+   {
+       x = 5;
+   }
+}

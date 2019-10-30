@@ -11,10 +11,9 @@ if len(sys.argv) < 2:
 
 try:
     x = program(lexmemes)
+    x.analyze()
     print("ACCEPT")
 except Exception as e:
-    raise e
+    # raise e
     print("REJECT")
-
-
 

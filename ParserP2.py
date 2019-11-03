@@ -8,27 +8,35 @@ class DeclarationListNode:
         if self.declarationList is not None:
             self.declarationList.analyze()
 
+
+last_decl_main = False
+
+
 class ProgramNode:
     def __init__(self, declarationList):
         self.declarationList = declarationList
 
     def analyze(self):
         self.declarationList.analyze()
+        if not last_decl_main:
+            raise Exception()
+
 
 class DeclarationNode:
-    def __init__(self,funDeclaration,varDeclaration=None):
+    def __init__(self, funDeclaration, varDeclaration=None):
         self.funDeclaration = funDeclaration
         self.varDeclaration = varDeclaration
-
 
     def analyze(self):
         if self.funDeclaration is not None:
             self.funDeclaration.analyze()
         if self.varDeclaration is not None:
             self.varDeclaration.analyze()
+            global last_decl_main
+            last_decl_main = False
 
 
-#vartab = [{}] #variables in compoundstate
+# vartab = [{}] #variables in compoundstate
 
 class varTab:
     variables = [[]]
@@ -36,22 +44,19 @@ class varTab:
     def __init__(self):
         pass
 
-    def append(self,type,ID,array):
+    def append(self, type, ID, array):
         group = [type, ID, array]
-        if ID in [group[1] for group in self.variables[-1]]:  #pulling out all the IDs out of variables
+        if ID in [group[1] for group in self.variables[-1]]:  # pulling out all the IDs out of variables
             raise Exception()
         self.variables[-1].append(group)
-
 
     def push_scope(self):
         self.variables.append([])
 
-
     def pop_scope(self):
         self.variables.pop()
 
-
-    def search(self,ID):
+    def search(self, ID):
         for scope in reversed(self.variables):
             for group in scope:
                 if ID == group[1]:
@@ -60,6 +65,7 @@ class varTab:
 
 
 vtab = varTab()
+
 
 class funcTab:
     variables = []
@@ -73,13 +79,16 @@ class funcTab:
             raise Exception()
         self.variables.append(group)
 
+
     def search(self, ID):
         for group in self.variables:
             if ID == group[1]:
                 return group
         raise Exception()
 
+
 ftab = funcTab()
+
 
 class VarDeclartionNode:
     def __init__(self, type, ID, num=None):
@@ -88,7 +97,9 @@ class VarDeclartionNode:
         self.num = num
 
     def analyze(self):
-        vtab.append(self.type, self.ID, self.num is not None)
+        if self.type[1] == "void":
+            raise Exception()
+        vtab.append(self.type[1], self.ID[1], self.num is not None)
 
 
 class ReturnTypeHolder:
@@ -101,20 +112,26 @@ ret = ReturnTypeHolder("void")
 
 
 class FunDeclarationNode:
-    def __init__(self,type, ID, params, compoundState):
+    def __init__(self, type, ID, params, compoundState):
         self.type = type
         self.ID = ID
         self.params = params
         self.compoundState = compoundState
 
-
     def analyze(self):
-        ret = ReturnTypeHolder(self.type)
-        ftab.append(self.type, self.ID, self.params)
+        global ret
+        ret = ReturnTypeHolder(self.type[1])
+        ftab.append(self.type[1], self.ID[1], self.params)
+
+        vtab.push_scope()
+        self.params.analyze()
         self.compoundState.analyze(False)
+        vtab.pop_scope()
+
         if not ret.hit:
             raise Exception()
-
+        global last_decl_main
+        last_decl_main = self.type[1] == "void" and self.ID[1] == "main" and self.params.paramList is None
 
 
 class ParamsNode:
@@ -124,10 +141,10 @@ class ParamsNode:
     def analyze(self):
         if self.paramList is not None:
             self.paramList.analyze()
-        vtab.push_scope()
+
 
 class ParamListNode:
-    def __init__(self,param, paramList=None):
+    def __init__(self, param, paramList=None):
         self.param = param
         self.paramList = paramList
 
@@ -136,16 +153,19 @@ class ParamListNode:
         if self.paramList is not None:
             self.paramList.analyze()
 
-#CHECK FOR CORRECTION
+
+# CHECK FOR CORRECTION
 
 class ParamNode:
-    def __init__(self,type, ID, arr = False):
+    def __init__(self, type, ID, arr=False):
         self.type = type
-        self.ID= ID
+        self.ID = ID
         self.arr = arr
 
     def analyze(self):
-        vtab.append(self.type, self.ID, self.arr)
+        if self.type[1] == "void":
+            raise Exception()
+        vtab.append(self.type[1], self.ID[1], self.arr)
 
 
 class CompState:
@@ -153,16 +173,17 @@ class CompState:
         self.localDeclaration = localDeclaration
         self.stateList = stateList
 
-
-    def analyze(self, pushscope = True):
+    def analyze(self, pushscope=True):
         if pushscope:
             vtab.push_scope()
         self.localDeclaration.analyze()
         self.stateList.analyze()
+        if pushscope:
+            vtab.pop_scope()
 
 
 class LocalDeclaration:
-    def __init__(self,varDeclaration = None, localDeclaration=None):
+    def __init__(self, varDeclaration=None, localDeclaration=None):
         self.varDeclaration = varDeclaration
         self.localDeclaration = localDeclaration
 
@@ -174,7 +195,7 @@ class LocalDeclaration:
 
 
 class StateList:
-    def __init__(self, statement=None, statementList=None): #DOES THIS NEED TO BE =NONE
+    def __init__(self, statement=None, statementList=None):  # DOES THIS NEED TO BE =NONE
         self.statement = statement
         self.statementList = statementList
 
@@ -207,7 +228,7 @@ class Statement:
 
 
 class ExpressionState:
-    def __init__(self,expression=None):
+    def __init__(self, expression=None):
         self.expression = expression
 
     def analyze(self):
@@ -216,11 +237,10 @@ class ExpressionState:
 
 
 class SelectionState:
-    def __init__(self, expr, ifStatement, elseStatement = None):
+    def __init__(self, expr, ifStatement, elseStatement=None):
         self.expr = expr
         self.elseStatement = elseStatement
         self.ifStatement = ifStatement
-
 
     def analyze(self):
         t = self.expr.analyze()
@@ -244,7 +264,7 @@ class IterationState:
 
 
 class ReturnState:
-    def __init__(self, returnExpression = None):
+    def __init__(self, returnExpression=None):
         self.returnExpression = returnExpression
 
     def analyze(self):
@@ -254,10 +274,11 @@ class ReturnState:
             t = self.returnExpression.analyze()
             if t != [ret.type, False]:
                 raise Exception()
+            ret.hit = True
 
 
 class Expression:
-    def __init__(self, var, expr, simpleExpression = None):
+    def __init__(self, var, expr, simpleExpression=None):
         self.var = var
         self.expr = expr
         self.simpleExpression = simpleExpression
@@ -268,20 +289,22 @@ class Expression:
             b = self.expr.analyze()
             if a != b:
                 raise Exception()
+            if a[1]:
+                raise Exception()
+            return a
         if self.simpleExpression is not None:
-            self.simpleExpression.analyze()
-
-
+            return self.simpleExpression.analyze()
 
 
 class Var:
-    def __init__(self, ID, expression = None):
+    def __init__(self, ID, expression=None):
         self.ID = ID
         self.expression = expression
-    #expression[2+2}
+
+    # expression[2+2}
     def analyze(self):
-        group = vtab.search(self.ID)
-        if expression is None:
+        group = vtab.search(self.ID[1])
+        if self.expression is None:
             return [group[0], group[2]]
         else:
             if not group[2]:
@@ -289,10 +312,11 @@ class Var:
             t = self.expression.analyze()
             if t != ["int", False]:
                 raise Exception()
+            return t
 
 
-class SimpleExpression: #x!=y or x>y or x<y or x==y ...
-    def __init__(self, lhs, relop = None, rhs = None ):
+class SimpleExpression:  # x!=y or x>y or x<y or x==y ...
+    def __init__(self, lhs, relop=None, rhs=None):
         self.lhs = lhs
         self.relop = relop
         self.rhs = rhs
@@ -303,7 +327,7 @@ class SimpleExpression: #x!=y or x>y or x<y or x==y ...
             b = self.rhs.analyze()
             if a != b:
                 raise Exception()
-            if a[1]: # if a is an array
+            if a[1]:  # if a is an array
                 raise Exception()
             if a[0] == "void":
                 raise Exception()
@@ -313,7 +337,7 @@ class SimpleExpression: #x!=y or x>y or x<y or x==y ...
 
 
 class AdditiveExpression:
-    def __init__(self, lhs, addop = None, rhs = None):
+    def __init__(self, lhs, addop=None, rhs=None):
         self.lhs = lhs
         self.addop = addop
         self.rhs = rhs
@@ -324,7 +348,7 @@ class AdditiveExpression:
             b = self.rhs.analyze()
             if a != b:
                 raise Exception()
-            if a[1]: # if a is an array
+            if a[1]:  # if a is an array
                 raise Exception()
             if a[0] == "void":
                 raise Exception()
@@ -332,19 +356,20 @@ class AdditiveExpression:
         else:
             return self.lhs.analyze()
 
-class Term: #x*y / x/y
-    def __init__(self, factor, mulop = None, term = None):
+
+class Term:  # x*y / x/y
+    def __init__(self, factor, mulop=None, term=None):
         self.factor = factor
         self.mulop = mulop
         self.term = term
 
     def analyze(self):
-        if self.factor is not None:
+        if self.term is not None:
             a = self.factor.analyze()
             b = self.term.analyze()
             if a != b:
                 raise Exception()
-            if a[1]: # if a is an array
+            if a[1]:  # if a is an array
                 raise Exception()
             if a[0] == "void":
                 raise Exception()
@@ -368,7 +393,7 @@ class Factor:
         if self.call is not None:
             return self.call.analyze()
         if self.number is not None:
-            return self.number.analyze()
+            return ["int", False]
 
 
 class Call:
@@ -377,11 +402,11 @@ class Call:
         self.args = args
 
     def analyze(self):
-        func = ftab.search(self.ID)
+        func = ftab.search(self.ID[1])
         type = func[0]
         params = func[2]
         if params.paramList is None:
-            if self.args.argList is not None:
+            if self.args.argsList is not None:
                 raise Exception()
             else:
                 return [type, False]
@@ -396,26 +421,26 @@ class Call:
                     return
             elif arg_list.argList is None:
                 raise Exception()
-            ptype = [param_list.param.type, param_list.param.arr]
+            ptype = [param_list.param.type[1], param_list.param.arr]
             atype = arg_list.expression.analyze()
             if ptype != atype:
                 raise Exception()
             analyze_rec(param_list.paramList, arg_list.argList)
+
         analyze_rec(params.paramList, self.args.argsList)
 
         return [type, False]
 
 
 class Args:
-    def __init__(self, argsList = None):
+    def __init__(self, argsList=None):
         self.argsList = argsList
 
+
 class ArgList:
-    def __init__(self, expression, argList = None):
+    def __init__(self, expression, argList=None):
         self.expression = expression
         self.argList = argList
-
-
 
 
 lexmemes = [
@@ -479,13 +504,14 @@ def program(lm2):
         raise Exception()
     return ProgramNode(dec)
 
+
 def declaration_list():
     global index
     dec = declaration()
     indexOld = index
     try:
         dec1 = declaration_list()
-        return DeclarationListNode(dec,dec1)
+        return DeclarationListNode(dec, dec1)
     except:
         index = indexOld
         return DeclarationListNode(dec)
@@ -496,7 +522,7 @@ def declaration():
     index_old = index
     try:
         dec = var_declaration()
-        return DeclarationNode(None,dec)
+        return DeclarationNode(None, dec)
     except:
         index = index_old
         dec1 = fun_declaration()
@@ -516,7 +542,7 @@ def var_declaration():
     accept_lexmeme()
     if current_lexmeme()[1] == ";":
         accept_lexmeme()
-        return VarDeclartionNode(t,i)
+        return VarDeclartionNode(t, i)
     elif current_lexmeme()[1] == "[":
         accept_lexmeme()
         if current_lexmeme()[0] != "INT":
@@ -529,7 +555,7 @@ def var_declaration():
         if current_lexmeme()[1] != ";":
             raise Exception()
         accept_lexmeme()
-        return VarDeclartionNode(t,i,z)
+        return VarDeclartionNode(t, i, z)
     else:
         raise Exception()
 
@@ -553,7 +579,7 @@ def fun_declaration():
         raise Exception()
     accept_lexmeme()
     w = compoundStmt()
-    return FunDeclarationNode(x,y,z,w)
+    return FunDeclarationNode(x, y, z, w)
 
 
 def params():
@@ -574,9 +600,9 @@ def paramList():
     if current_lexmeme()[1] == ",":
         accept_lexmeme()
         y = paramList()
-        return ParamListNode(x,y)
+        return ParamListNode(x, y)
     else:
-        return
+        return ParamListNode(x)
 
 
 def param():
@@ -596,13 +622,14 @@ def param():
         if current_lexmeme()[1] != "]":
             raise Exception()
         accept_lexmeme()
-        return ParamNode(x,y, True)
+        return ParamNode(x, y, True)
     else:
-        return ParamNode(x,y)
+        return ParamNode(x, y)
+
 
 def compoundStmt():
     global index
-    #indexOld = index
+    # indexOld = index
     if current_lexmeme()[1] != "{":
         raise Exception()
     accept_lexmeme()
@@ -612,6 +639,7 @@ def compoundStmt():
         raise Exception()
     accept_lexmeme()
     return CompState(x, y)
+
 
 def localDeclarations():
     try:
@@ -635,7 +663,8 @@ def statementList():
         index = indexold
         return StateList()
 
-#CHECK FOR CORRECTIOn
+
+# CHECK FOR CORRECTIOn
 def statement():
     global index
     indexOld = index
@@ -677,6 +706,7 @@ def expressionState():
         accept_lexmeme()
         return ExpressionState(x)
 
+
 def selectionState():
     global index
     # indexOld = index
@@ -697,6 +727,7 @@ def selectionState():
     z = statement()
     return SelectionState(x, y, z)
 
+
 def iterationState():
     global index
     # indexOld = index
@@ -712,6 +743,7 @@ def iterationState():
     accept_lexmeme()
     y = statement()
     return IterationState(x, y)
+
 
 def returnState():
     global index
@@ -768,9 +800,10 @@ def simpleExpression():
         y = current_lexmeme()
         accept_lexmeme()
         z = additiveExpression()
-        SimpleExpression(x, y, z)
+        return SimpleExpression(x, y, z)
     else:
         return SimpleExpression(x)
+
 
 def additiveExpression():
     global index
@@ -779,7 +812,7 @@ def additiveExpression():
         y = current_lexmeme()
         accept_lexmeme()
         z = additiveExpression()
-        AdditiveExpression(x, y, z)
+        return AdditiveExpression(x, y, z)
     else:
         return AdditiveExpression(x)
 
@@ -791,9 +824,10 @@ def term():
         y = current_lexmeme()
         accept_lexmeme()
         z = term()
-        Term(x, y, z)
+        return Term(x, y, z)
     else:
         return Term(x)
+
 
 def factor():
     global index
@@ -819,10 +853,11 @@ def factor():
                 return Factor(None, x, None, None)
             except:
                 index = oldIndex
+                x = current_lexmeme()
                 if current_lexmeme()[0] == "INT":
                     accept_lexmeme()
-                    return
-                x = current_lexmeme()
+                else:
+                    raise Exception()
                 return Factor(None, None, None, x)
 
 
@@ -841,6 +876,7 @@ def call():
         raise Exception()
     accept_lexmeme()
     return Call(x, y)
+
 
 def args():
     global index
@@ -863,10 +899,3 @@ def argList():
         return ArgList(x, y)
     else:
         return ArgList(x)
-
-
-
-
-
-
-

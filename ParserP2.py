@@ -270,6 +270,8 @@ class ReturnState:
     def analyze(self):
         if self.returnExpression is None and ret.type != "void":
             raise Exception()
+        if self.returnExpression is not None and ret.type == "void":
+            raise Exception()
         if self.returnExpression is not None:
             t = self.returnExpression.analyze()
             if t != [ret.type, False]:

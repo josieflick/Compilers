@@ -14,6 +14,6 @@ try:
     x.analyze()
     print("ACCEPT")
 except Exception as e:
-    # raise e
+    #raise e
     print("REJECT")
 
